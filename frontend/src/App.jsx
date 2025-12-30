@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import './App.css';
+import Home from './Home';
+import Motors from './Motors';
+import Windows from './Windows';
+import Tires from './Tires';
+import Bodies from './Bodies';
 
-function App() {
+function Cars() {
   const API_URL = 'http://localhost:5026/api/cars';
   
   const [cars, setCars] = useState([]);
@@ -126,7 +132,10 @@ function App() {
 
   return (
     <div className="container">
-      <h1>🚗 Управление автомобилями</h1>
+      <div className="cars-header">
+        <Link to="/" className="back-to-home">← Главная</Link>
+        <h1>🚗 Управление автомобилями</h1>
+      </div>
 
       {/* Форма добавления/редактирования */}
       <form className="form" onSubmit={editingId ? handleUpdateCar : handleAddCar}>
@@ -222,4 +231,20 @@ function App() {
   );
 }
 
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/cars" element={<Cars />} />
+        <Route path="/motors" element={<Motors />} />
+        <Route path="/windows" element={<Windows />} />
+        <Route path="/tires" element={<Tires />} />
+        <Route path="/bodies" element={<Bodies />} />
+      </Routes>
+    </Router>
+  );
+}
+
 export default App;
+
