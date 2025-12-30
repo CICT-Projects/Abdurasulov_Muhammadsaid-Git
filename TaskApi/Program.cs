@@ -1,3 +1,7 @@
+using System.IO;
+using System.Text.Json;
+using System.Linq;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Добавляем сервисы
@@ -43,16 +47,95 @@ public class Car
     public string Color { get; set; } = string.Empty;
 }
 
-// Сервис для работы с машинами
+// Сервис для работы с машинами (persist в JSON-файл)
 public class CarService
 {
-    private List<Car> cars = new List<Car>
+    private List<Car> cars;
+    private int nextId;
+    private readonly string dataFilePath;
+    private readonly object fileLock = new object();
+
+    public CarService()
+    {
+        var dataDir = Path.Combine(AppContext.BaseDirectory, "data");
+        Directory.CreateDirectory(dataDir);
+        dataFilePath = Path.Combine(dataDir, "cars.json");
+
+        if (File.Exists(dataFilePath))
+        {
+            try
+            {
+                var json = File.ReadAllText(dataFilePath);
+                var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var loaded = JsonSerializer.Deserialize<List<Car>>(json, opts);
+                if (loaded != null && loaded.Count > 0)
+                {
+                    cars = loaded;
+                }
+                else
+                {
+                    cars = GetDefaultCars();
+                }
+            }
+            catch
+            {
+                // При ошибке чтения/парсинга — восстановим дефолтный набор
+                cars = GetDefaultCars();
+            }
+        }
+        else
+        {
+            cars = GetDefaultCars();
+            SaveToFile();
+        }
+
+        nextId = (cars.Count > 0) ? cars.Max(c => c.Id) + 1 : 1;
+    }
+
+    private List<Car> GetDefaultCars() => new List<Car>
     {
         new Car { Id = 1, Brand = "Toyota", Model = "Camry", Year = 2022, Color = "Black" },
         new Car { Id = 2, Brand = "BMW", Model = "X5", Year = 2023, Color = "White" }
     };
 
-    private int nextId = 3;
+    private void SaveToFile()
+    {
+        lock (fileLock)
+        {
+            var temp = dataFilePath + ".tmp";
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            var json = JsonSerializer.Serialize(cars, options);
+
+            File.WriteAllText(temp, json);
+            try
+            {
+                if (File.Exists(dataFilePath))
+                {
+                    // Atomic replace (works if destination exists)
+                    File.Replace(temp, dataFilePath, null);
+                }
+                else
+                {
+                    File.Move(temp, dataFilePath);
+                }
+            }
+            catch
+            {
+                // Фоллбек: перезапишем файл напрямую
+                try
+                {
+                    File.Copy(temp, dataFilePath, true);
+                    File.Delete(temp);
+                }
+                catch
+                {
+                    // В крайнем случае — попробуем записать напрямую (потеря атомарности)
+                    File.WriteAllText(dataFilePath, json);
+                    if (File.Exists(temp)) File.Delete(temp);
+                }
+            }
+        }
+    }
 
     public IEnumerable<Car> GetAllCars() => cars;
 
@@ -62,6 +145,7 @@ public class CarService
     {
         car.Id = nextId++;
         cars.Add(car);
+        try { SaveToFile(); } catch { }
         return car;
     }
 
@@ -75,6 +159,7 @@ public class CarService
         car.Year = updatedCar.Year;
         car.Color = updatedCar.Color;
 
+        try { SaveToFile(); } catch { }
         return car;
     }
 
@@ -84,6 +169,7 @@ public class CarService
         if (car == null) return false;
 
         cars.Remove(car);
+        try { SaveToFile(); } catch { }
         return true;
     }
 }
