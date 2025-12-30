@@ -1,0 +1,45 @@
+﻿### Получить все машины
+GET http://localhost:5026/api/cars
+
+### Получить машину по ID
+GET http://localhost:5026/api/cars/1
+
+### Создать новую машину
+POST http://localhost:5026/api/cars
+Content-Type: application/json
+
+{
+  "brand": "Mercedes-Benz",
+  "model": "E-Class",
+  "year": 2023,
+  "color": "Silver"
+}
+
+### Создать ещё одну машину
+POST http://localhost:5026/api/cars
+Content-Type: application/json
+
+{
+  "brand": "Audi",
+  "model": "A4",
+  "year": 2022,
+  "color": "Red"
+}
+
+### Обновить машину
+PUT http://localhost:5026/api/cars/1
+Content-Type: application/json
+
+{
+  "brand": "Toyota",
+  "model": "Corolla",
+  "year": 2023,
+  "color": "Blue"
+}
+
+### Удалить машину
+DELETE http://localhost:5026/api/cars/3
+
+### Получить обновленный список
+GET http://localhost:5026/api/cars
+
